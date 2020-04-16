@@ -34,6 +34,12 @@ options:
       - The S3 path to a script that executes a job.
       - Required when I(state=present).
     type: str
+  command_python_version
+    description:
+      - The version of Python to use in a job.
+      - Required when I(state=present).
+    default: 2
+    type: str
   connections:
     description:
       - A list of Glue connections used for this job.
@@ -89,6 +95,7 @@ EXAMPLES = '''
 # Create an AWS Glue job
 - aws_glue_job:
     command_script_location: s3bucket/script.py
+    command_python_version: 2
     name: my-glue-job
     role: my-iam-role
     state: present
@@ -118,6 +125,11 @@ command:
             returned: when state is present
             type: str
             sample: glueetl
+        python_version:
+            description: Version of Python to use in a job.
+            returned: when state is present
+            type: str
+            sample: 2
         script_location:
             description: Specifies the S3 path to a script that executes a job.
             returned: when state is present
@@ -268,10 +280,13 @@ def create_or_update_glue_job(connection, module, glue_job):
     params = dict()
     params['Name'] = module.params.get("name")
     params['Role'] = module.params.get("role")
+    params['Command'] = {'Name': module.params.get("command_name")}
     if module.params.get("allocated_capacity") is not None:
         params['AllocatedCapacity'] = module.params.get("allocated_capacity")
+    if module.params.get("command_python_version") is not None:
+        params['Command']['PythonVersion'] = module.params.get("command_python_version")
     if module.params.get("command_script_location") is not None:
-        params['Command'] = {'Name': module.params.get("command_name"), 'ScriptLocation': module.params.get("command_script_location")}
+        params['Command']['ScriptLocation'] = module.params.get("command_script_location")
     if module.params.get("connections") is not None:
         params['Connections'] = {'Connections': module.params.get("connections")}
     if module.params.get("default_arguments") is not None:
@@ -339,6 +354,7 @@ def main():
             allocated_capacity=dict(type='int'),
             command_name=dict(type='str', default='glueetl'),
             command_script_location=dict(type='str'),
+            command_python_version=dict(type='str', choices=['2', '3'], default='2'),
             connections=dict(type='list'),
             default_arguments=dict(type='dict'),
             description=dict(type='str'),
